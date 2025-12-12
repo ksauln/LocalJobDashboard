@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict
 
 from ..storage import vectordb
-from ..storage.sqlite import insert_job, log_job_run
+from ..storage.sqlite import get_job, insert_job, log_job_run
 from ..tools.dedupe import is_duplicate, stable_job_id
 from ..tools.job_sources import get_sources_from_env
 from ..llm import ollama_client
@@ -30,6 +30,8 @@ class JobScoutAgent:
                 if not job.job_id:
                     job.job_id = stable_job_id(job.title, job.company, job.location or "", job.url)
                 if is_duplicate(existing_urls, job):
+                    continue
+                if get_job(job.job_id):
                     continue
                 insert_job(job)
                 doc = f"{job.title} at {job.company} {job.location or ''}\n{job.description}"
