@@ -50,7 +50,7 @@ flowchart LR
 - `.github/workflows/ci.yml`: CI pipeline with ruff and pytest
 
 ## Data Sources
-Adapters include Dummy, Greenhouse, Lever, and Remotive public APIs. Defaults use Remotive (live data) out of the box; set `JOB_SOURCES` to adjust. No scraping is used; only public endpoints are called respecting provider terms.
+Adapters include Dummy, Greenhouse, Lever, Remotive public APIs, plus a `scraper` source that reuses the [JobScraper](https://github.com/ksauln/JobScraper) provider list (Greenhouse/Ashby/Workday boards and lightweight HTML fallbacks for public career pages). Defaults enable `remotive,scraper`; set `JOB_SOURCES` to adjust or disable scraping if you want API-only calls. The scraper only hits public pages/endpoints but you should keep limits respectful.
 
 Need Greenhouse/Lever board slugs? Use the helper script (no token required):
 ```bash

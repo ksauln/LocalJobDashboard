@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 import pypdf
 from docx import Document
 
@@ -20,3 +21,13 @@ def extract_text(path: str) -> str:
         raise ValueError(f"Unsupported file type: {suffix}")
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def strip_html(text: str) -> str:
+    """Convert HTML into readable plain text for display/scoring."""
+    if not text:
+        return ""
+    soup = BeautifulSoup(text, "html.parser")
+    cleaned = soup.get_text(" ", strip=True)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned.strip()

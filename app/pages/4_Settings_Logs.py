@@ -1,10 +1,17 @@
+import sys
+from pathlib import Path
+
 import streamlit as st
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import app  # noqa: F401  # ensure project root is on sys.path
+from app.app import ensure_agents, load_collections
+from src import config
 from src.storage.sqlite import get_conn, wipe_jobs, wipe_resumes
 from src.storage.vectordb import clear_collection
-from src import config
-from app.app import ensure_agents, load_collections
 
 ensure_agents()
 jobs_collection, resumes_collection = load_collections()

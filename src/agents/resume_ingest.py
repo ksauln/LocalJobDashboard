@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Any
+from pathlib import Path
 
 from ..llm import ollama_client
 from ..storage import vectordb
@@ -22,6 +23,7 @@ class ResumeIngestAgent:
             raise ValueError("Extracted text is empty")
         chunks = chunk_text(text)
         resume_id = str(uuid.uuid4())
+        display_name = Path(filepath).name
         embeddings = [ollama_client.embed(chunk) for chunk in chunks]
         ids = [f"{resume_id}:{i}" for i in range(len(chunks))]
         metadatas: list[dict[str, Any]] = [
@@ -35,6 +37,6 @@ class ResumeIngestAgent:
             metadatas=metadatas,
             embeddings=embeddings,
         )
-        insert_resume(resume_id, filepath, datetime.utcnow().isoformat())
-        logger.info("Ingested resume %s with %s chunks", resume_id, len(chunks))
+        insert_resume(resume_id, display_name, datetime.utcnow().isoformat())
+        logger.info("Ingested resume %s (%s) with %s chunks", resume_id, display_name, len(chunks))
         return resume_id
