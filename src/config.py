@@ -1,11 +1,5 @@
 import os
-
-try:
-    from dotenv import load_dotenv
-except ImportError:  # pragma: no cover - fallback when dependency missing
-
-    def load_dotenv(*args, **kwargs):  # type: ignore
-        return None
+from dotenv import load_dotenv
 
 load_dotenv()
 

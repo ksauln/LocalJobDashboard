@@ -1,18 +1,5 @@
 from typing import List, Optional, Union
-
-try:  # Prefer real pydantic when available
-    from pydantic import BaseModel
-except ImportError:  # Lightweight fallback for environments without dependencies installed
-
-    class BaseModel:  # type: ignore
-        """Minimal stand-in to keep tests running when pydantic isn't installed."""
-
-        def __init__(self, **data):
-            for key, value in data.items():
-                setattr(self, key, value)
-
-        def dict(self):
-            return self.__dict__
+from pydantic import BaseModel
 
 
 class ResumeMeta(BaseModel):
@@ -44,3 +31,4 @@ class RankedJob(BaseModel):
     job: Union[Job, dict]
     distance: float
     match: Optional[MatchResult] = None
+
