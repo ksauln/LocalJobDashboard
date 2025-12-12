@@ -50,7 +50,13 @@ flowchart LR
 - `.github/workflows/ci.yml`: CI pipeline with ruff and pytest
 
 ## Data Sources
-Adapters include Dummy, Greenhouse, Lever, and Remotive public APIs. No scraping is used; only public endpoints are called respecting provider terms.
+Adapters include Dummy, Greenhouse, Lever, and Remotive public APIs. Defaults use Remotive (live data) out of the box; set `JOB_SOURCES` to adjust. No scraping is used; only public endpoints are called respecting provider terms.
+
+Need Greenhouse/Lever board slugs? Use the helper script (no token required):
+```bash
+python scripts/scrape_boards.py --max-urls 5000
+# review data/greenhouse_slugs.txt and data/lever_slugs.txt, then paste into .env
+```
 
 ## Roadmap
 - Add richer evaluation datasets and analytics

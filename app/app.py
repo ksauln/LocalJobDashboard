@@ -1,5 +1,12 @@
-import os
+import sys
+from pathlib import Path
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:  # ensure src package is importable when run via Streamlit
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+cache_resource = getattr(st, "cache_resource", st.experimental_singleton)
 
 from src import config
 from src.logging_config import setup_logging
@@ -14,7 +21,7 @@ from src.llm import ollama_client
 setup_logging()
 
 
-@st.cache_resource
+@cache_resource
 def load_collections():
     jobs_client = get_chroma_client(config.VDB_JOBS_DIR)
     resumes_client = get_chroma_client(config.VDB_RESUMES_DIR)

@@ -1,8 +1,9 @@
 import streamlit as st
 
+import app  # noqa: F401  # ensure project root is on sys.path
 from src.storage.sqlite import list_resumes
 from src.storage import vectordb
-from src.app import ensure_agents, load_collections
+from app.app import ensure_agents, load_collections
 
 
 ensure_agents()

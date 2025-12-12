@@ -8,6 +8,7 @@ from ..storage.sqlite import insert_job, log_job_run
 from ..tools.dedupe import is_duplicate, stable_job_id
 from ..tools.job_sources import get_sources_from_env
 from ..llm import ollama_client
+from ..llm.ollama_client import OllamaError
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class JobScoutAgent:
     def __init__(self, job_collection):
         self.job_collection = job_collection
         self.sources = get_sources_from_env()
+        self.max_embed_chars = 4000  # avoid exceeding embed context
 
     def run_search(self, query: str, limit_per_source: int = 50) -> Dict[str, int]:
         run_id = str(uuid.uuid4())
@@ -33,11 +35,16 @@ class JobScoutAgent:
                     continue
                 insert_job(job)
                 doc = f"{job.title} at {job.company} {job.location or ''}\n{job.description}"
-                embedding = ollama_client.embed(doc)
+                doc_for_embed = doc[: self.max_embed_chars]
+                try:
+                    embedding = ollama_client.embed(doc_for_embed)
+                except OllamaError as exc:
+                    logger.warning("Embedding failed for job %s: %s", job.job_id, exc)
+                    continue
                 vectordb.add_documents(
                     self.job_collection,
                     ids=[job.job_id],
-                    documents=[doc],
+                    documents=[doc_for_embed],
                     metadatas=[job.dict()],
                     embeddings=[embedding],
                 )

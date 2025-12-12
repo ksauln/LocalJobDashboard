@@ -175,3 +175,20 @@ def log_match_run(
     conn.commit()
     conn.close()
 
+
+def wipe_jobs() -> None:
+    """Delete all jobs and job run logs."""
+    conn = get_conn()
+    conn.execute("DELETE FROM jobs")
+    conn.execute("DELETE FROM job_runs")
+    conn.commit()
+    conn.close()
+
+
+def wipe_resumes() -> None:
+    """Delete all resumes and match run logs."""
+    conn = get_conn()
+    conn.execute("DELETE FROM resumes")
+    conn.execute("DELETE FROM match_runs")
+    conn.commit()
+    conn.close()

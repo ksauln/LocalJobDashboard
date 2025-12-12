@@ -21,3 +21,15 @@ def query(collection, query_embedding: List[float], n_results: int, where_filter
 
 def get(collection, where_filter: Optional[Dict[str, Any]] = None, limit: Optional[int] = None):
     return collection.get(where=where_filter, limit=limit)
+
+
+def clear_collection(collection) -> None:
+    """Remove all documents from a collection."""
+    try:
+        collection.delete(where={})
+    except Exception:
+        # Fallback: delete by ids if where={} not supported
+        existing = collection.get()
+        ids = existing.get("ids", [])
+        if ids:
+            collection.delete(ids=ids)

@@ -1,7 +1,8 @@
 import streamlit as st
 
+import app  # noqa: F401  # ensure project root is on sys.path
 from src.storage.sqlite import list_resumes
-from src.app import ensure_agents
+from app.app import ensure_agents
 
 ensure_agents()
 
