@@ -67,9 +67,17 @@ class MatchRankAgent:
         return {item["job_id"]: item for item in parsed if item.get("job_id")}
 
     @staticmethod
-    def _parse_llm_json(raw: str) -> Optional[List[dict]]:
+    def _parse_llm_json(raw) -> Optional[List[dict]]:
         """Best-effort extraction of a JSON array (or single object) from the model output."""
-        cleaned = raw.strip().strip("`")
+
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, dict):
+            return [raw]
+        if raw is None:
+            return []
+
+        cleaned = str(raw).strip().strip("`")
         if not cleaned:
             return []
         try:

@@ -60,3 +60,25 @@ def test_llm_rerank_third_prompt_used_if_needed(monkeypatch):
 
     assert result["job-y"]["score_0_to_100"] == 99
     assert calls["count"] == 3
+
+
+def test_parse_llm_json_accepts_structured_output():
+    raw = {"job_id": "job-z", "score_0_to_100": 80, "strengths": ["py"], "gaps": [], "short_reason": "good"}
+
+    parsed = MatchRankAgent._parse_llm_json(raw)
+
+    assert parsed == [raw]
+
+
+def test_llm_rerank_handles_non_string_chat_output(monkeypatch):
+    agent = MatchRankAgent(None, None)
+
+    def fake_chat(_messages, model=None, format=None):
+        assert format == "json"
+        return [{"job_id": "job-a", "score_0_to_100": 88, "strengths": [], "gaps": [], "short_reason": "solid"}]
+
+    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+
+    result = agent._llm_rerank("resume text", [{"job_id": "job-a", "description": "desc"}])
+
+    assert result["job-a"]["score_0_to_100"] == 88
