@@ -1,11 +1,11 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from html.parser import HTMLParser
 from typing import List, Optional, Sequence
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
 
 from ...models import Job
 from ..parsing import strip_html
@@ -60,14 +60,47 @@ class SimpleHTMLProvider(BaseProvider):
         url = self.search_url_template.format(query=query)
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+
+        class _AnchorCollector(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.anchors: list[dict] = []
+                self._current: Optional[dict] = None
+                self._text_parts: list[str] = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag != "a":
+                    return
+                attr_dict = {key: value for key, value in attrs}
+                self._current = {
+                    "href": attr_dict.get("href"),
+                    "title": attr_dict.get("title"),
+                    "data-location": attr_dict.get("data-location"),
+                }
+                self._text_parts = []
+
+            def handle_data(self, data):
+                if self._current is not None:
+                    self._text_parts.append(data)
+
+            def handle_endtag(self, tag):
+                if tag != "a" or self._current is None:
+                    return
+                text = " ".join(part.strip() for part in self._text_parts if part.strip()).strip()
+                self._current["text"] = text
+                self.anchors.append(self._current)
+                self._current = None
+                self._text_parts = []
+
+        parser = _AnchorCollector()
+        parser.feed(resp.text)
 
         results: List[ScrapedJob] = []
         seen_urls: set[str] = set()
-        for anchor in soup.find_all("a"):
+        for anchor in parser.anchors:
             if limit and len(results) >= limit:
                 break
-            text = anchor.get_text(" ", strip=True)
+            text = anchor.get("text") or ""
             href = anchor.get("href")
             if not text or not href:
                 continue

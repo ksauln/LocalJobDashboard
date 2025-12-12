@@ -37,8 +37,10 @@ def embed(text: str) -> List[float]:
     return data.get("embedding", [])
 
 
-def chat(messages: List[dict], model: Optional[str] = None) -> str:
+def chat(messages: List[dict], model: Optional[str] = None, format: Optional[str] = None) -> str:
     payload = {"model": model or OLLAMA_MODEL, "messages": messages, "stream": False}
+    if format:
+        payload["format"] = format
     resp = _post_with_retry("/api/chat", payload)
     data = resp.json()
     return data.get("message", {}).get("content", "")

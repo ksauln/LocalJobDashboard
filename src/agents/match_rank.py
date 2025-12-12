@@ -18,9 +18,9 @@ class MatchRankAgent:
     def __init__(self, resume_collection, job_collection):
         self.resume_collection = resume_collection
         self.job_collection = job_collection
-        self.max_embed_chars = 4000
-        self.max_llm_resume_chars = 4000
-        self.max_llm_job_chars = 1200
+        self.max_embed_chars = 6000
+        self.max_llm_resume_chars = 6000
+        self.max_llm_job_chars = 4000
 
     def _resume_query_text(self, resume_id: str, top_n: int = 3) -> str:
         res = vectordb.get(self.resume_collection, where_filter={"resume_id": resume_id}, limit=top_n)
@@ -37,6 +37,7 @@ class MatchRankAgent:
         prompts = [
             base_prompt,
             base_prompt + " Respond ONLY with the JSON array. Begin with '[' and end with ']'.",
+            "Return ONLY the JSON array of matches using the exact shape above. If unsure, return an empty array [].",
         ]
         trimmed_jobs = []
         for job in jobs:
@@ -56,7 +57,7 @@ class MatchRankAgent:
                     "content": json.dumps({"resume": resume_text[: self.max_llm_resume_chars], "jobs": trimmed_jobs}),
                 },
             ]
-            last_raw = ollama_client.chat(messages)
+            last_raw = ollama_client.chat(messages, format="json")
             parsed = self._parse_llm_json(last_raw)
             if parsed is not None:
                 break
@@ -67,7 +68,7 @@ class MatchRankAgent:
 
     @staticmethod
     def _parse_llm_json(raw: str) -> Optional[List[dict]]:
-        """Best-effort extraction of a JSON array from the model output."""
+        """Best-effort extraction of a JSON array (or single object) from the model output."""
         cleaned = raw.strip().strip("`")
         if not cleaned:
             return []
@@ -76,12 +77,18 @@ class MatchRankAgent:
         except json.JSONDecodeError:
             match = re.search(r"(\[.*\])", cleaned, flags=re.S)
             if not match:
+                match = re.search(r"(\{.*\})", cleaned, flags=re.S)
+            if not match:
                 return None
             try:
                 data = json.loads(match.group(1))
             except json.JSONDecodeError:
                 return None
-        return data if isinstance(data, list) else None
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return [data]
+        return None
 
     def rank(self, resume_id: str, top_k: int = 25, use_llm_rerank: bool = True):
         run_id = str(uuid.uuid4())

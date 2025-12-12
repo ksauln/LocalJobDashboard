@@ -3,7 +3,6 @@ altair>=4,<5
 python-dotenv
 pydantic
 requests
-beautifulsoup4
 chromadb
 pandas
 pypdf

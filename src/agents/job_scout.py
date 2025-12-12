@@ -18,7 +18,7 @@ class JobScoutAgent:
     def __init__(self, job_collection):
         self.job_collection = job_collection
         self.sources = get_sources_from_env()
-        self.max_embed_chars = 8000  # avoid exceeding embed context
+        self.max_embed_chars = 9000  # avoid exceeding embed context
 
     def run_search(self, query: str, limit_per_source: int = 50) -> Dict[str, int]:
         run_id = str(uuid.uuid4())

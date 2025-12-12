@@ -1,7 +1,7 @@
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 
-from bs4 import BeautifulSoup
 import pypdf
 from docx import Document
 
@@ -27,7 +27,18 @@ def strip_html(text: str) -> str:
     """Convert HTML into readable plain text for display/scoring."""
     if not text:
         return ""
-    soup = BeautifulSoup(text, "html.parser")
-    cleaned = soup.get_text(" ", strip=True)
+
+    class _TextExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.chunks: list[str] = []
+
+        def handle_data(self, data: str):
+            if data:
+                self.chunks.append(data)
+
+    parser = _TextExtractor()
+    parser.feed(text)
+    cleaned = " ".join(chunk.strip() for chunk in parser.chunks if chunk.strip())
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
     return cleaned.strip()
