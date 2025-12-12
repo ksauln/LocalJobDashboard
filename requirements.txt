@@ -1,0 +1,10 @@
+streamlit
+python-dotenv
+pydantic
+requests
+chromadb
+pandas
+pypdf
+python-docx
+pytest
+ruff
