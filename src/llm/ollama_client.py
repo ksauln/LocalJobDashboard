@@ -14,8 +14,10 @@ class OllamaError(RuntimeError):
     pass
 
 
-def _post_with_retry(endpoint: str, payload: dict, retries: int = 2, timeout: int = 30) -> requests.Response:
-    url = f"{OLLAMA_BASE_URL}{endpoint}"
+def _post_with_retry(
+    endpoint: str, payload: dict, retries: int = 2, timeout: int = 30, base_url: Optional[str] = None
+) -> requests.Response:
+    url = f"{base_url or OLLAMA_BASE_URL}{endpoint}"
     for attempt in range(retries + 1):
         try:
             resp = requests.post(url, json=payload, timeout=timeout)
@@ -30,17 +32,22 @@ def _post_with_retry(endpoint: str, payload: dict, retries: int = 2, timeout: in
     raise OllamaError("Unknown error contacting Ollama")
 
 
-def embed(text: str) -> List[float]:
-    payload = {"model": OLLAMA_EMBED_MODEL, "prompt": text}
-    resp = _post_with_retry("/api/embeddings", payload)
+def embed(text: str, base_url: Optional[str] = None, embed_model: Optional[str] = None) -> List[float]:
+    payload = {"model": embed_model or OLLAMA_EMBED_MODEL, "prompt": text}
+    resp = _post_with_retry("/api/embeddings", payload, base_url=base_url)
     data = resp.json()
     return data.get("embedding", [])
 
 
-def chat(messages: List[dict], model: Optional[str] = None, format: Optional[str] = None) -> str:
+def chat(
+    messages: List[dict],
+    model: Optional[str] = None,
+    format: Optional[str] = None,
+    base_url: Optional[str] = None,
+) -> str:
     payload = {"model": model or OLLAMA_MODEL, "messages": messages, "stream": False}
     if format:
         payload["format"] = format
-    resp = _post_with_retry("/api/chat", payload)
+    resp = _post_with_retry("/api/chat", payload, base_url=base_url)
     data = resp.json()
     return data.get("message", {}).get("content", "")

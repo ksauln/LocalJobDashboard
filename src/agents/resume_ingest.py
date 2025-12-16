@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from pathlib import Path
 
-from ..llm import ollama_client
+from ..llm import embed
 from ..storage import vectordb
 from ..storage.sqlite import insert_resume
 from ..tools.chunking import chunk_text
@@ -24,7 +24,7 @@ class ResumeIngestAgent:
         chunks = chunk_text(text)
         resume_id = str(uuid.uuid4())
         display_name = Path(filepath).name
-        embeddings = [ollama_client.embed(chunk) for chunk in chunks]
+        embeddings = [embed(chunk) for chunk in chunks]
         ids = [f"{resume_id}:{i}" for i in range(len(chunks))]
         metadatas: list[dict[str, Any]] = [
             {"resume_id": resume_id, "chunk_index": i, "source_file": filepath}

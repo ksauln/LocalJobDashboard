@@ -37,7 +37,7 @@ def test_llm_rerank_retries_when_first_response_not_json(monkeypatch):
             return "Here are some thoughts but no JSON."
         return '[{"job_id": "job-x", "score_0_to_100": 42, "strengths": [], "gaps": [], "short_reason": "ok"}]'
 
-    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+    monkeypatch.setattr("src.agents.match_rank.chat", fake_chat)
     result = agent._llm_rerank("resume text", [{"job_id": "job-x", "description": "desc"}])
 
     assert result["job-x"]["score_0_to_100"] == 42
@@ -55,7 +55,7 @@ def test_llm_rerank_third_prompt_used_if_needed(monkeypatch):
             return "Analysis without JSON"
         return '[{"job_id": "job-y", "score_0_to_100": 99, "strengths": [], "gaps": [], "short_reason": "great"}]'
 
-    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+    monkeypatch.setattr("src.agents.match_rank.chat", fake_chat)
     result = agent._llm_rerank("resume text", [{"job_id": "job-y", "description": "desc"}])
 
     assert result["job-y"]["score_0_to_100"] == 99
@@ -77,7 +77,7 @@ def test_llm_rerank_handles_non_string_chat_output(monkeypatch):
         assert format == "json"
         return [{"job_id": "job-a", "score_0_to_100": 88, "strengths": [], "gaps": [], "short_reason": "solid"}]
 
-    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+    monkeypatch.setattr("src.agents.match_rank.chat", fake_chat)
 
     result = agent._llm_rerank("resume text", [{"job_id": "job-a", "description": "desc"}])
 
@@ -92,7 +92,7 @@ def test_llm_rerank_fills_missing_with_hybrid(monkeypatch):
         # Always omit job-miss to force fallback
         return '[{"job_id": "job-keep", "score_0_to_100": 70, "strengths": [], "gaps": [], "short_reason": "ok"}]'
 
-    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+    monkeypatch.setattr("src.agents.match_rank.chat", fake_chat)
 
     jobs = [
         {"job_id": "job-keep", "description": "desc1", "hybrid_score": 70},

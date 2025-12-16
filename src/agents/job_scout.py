@@ -8,8 +8,7 @@ from ..storage.sqlite import insert_job, log_job_run
 from ..tools.dedupe import is_duplicate, stable_job_id
 from ..tools.job_sources import get_sources_from_env
 from ..tools.parsing import strip_html
-from ..llm import ollama_client
-from ..llm.ollama_client import OllamaError
+from ..llm import LLMProviderError, embed
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +41,8 @@ class JobScoutAgent:
                 doc = f"{job.title} at {job.company} {job.location or ''}\n{cleaned_desc}"
                 doc_for_embed = doc[: self.max_embed_chars]
                 try:
-                    embedding = ollama_client.embed(doc_for_embed)
-                except OllamaError as exc:
+                    embedding = embed(doc_for_embed)
+                except LLMProviderError as exc:
                     logger.warning("Embedding failed for job %s: %s", job.job_id, exc)
                     continue
                 vectordb.add_documents(

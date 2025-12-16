@@ -16,7 +16,7 @@ from src.agents.resume_ingest import ResumeIngestAgent
 from src.agents.job_scout import JobScoutAgent
 from src.agents.match_rank import MatchRankAgent
 from src.tools.job_sources import get_sources_from_env
-from src.llm import ollama_client
+from src.llm import embed, get_active_config
 
 setup_logging()
 
@@ -43,11 +43,12 @@ def ensure_agents():
 
 def sidebar_status():
     st.sidebar.header("System Status")
+    cfg = get_active_config()
     try:
-        ollama_client.embed("ping")
-        st.sidebar.success("Ollama reachable")
+        embed("ping")
+        st.sidebar.success(f"{cfg.provider.title()} reachable")
     except Exception as exc:  # pragma: no cover
-        st.sidebar.error(f"Ollama issue: {exc}")
+        st.sidebar.error(f"LLM issue: {exc}")
     st.sidebar.write(f"Resumes: {len(list_resumes())}")
     st.sidebar.write(f"Jobs: {len(list_jobs())}")
     st.sidebar.write(f"Sources: {[s.name for s in get_sources_from_env()]}")

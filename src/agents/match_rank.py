@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from ..llm import ollama_client
+from ..llm import LLMProviderError, chat, embed
 from ..storage import vectordb
 from ..storage.sqlite import log_match_run
 from ..tools.parsing import strip_html
@@ -61,7 +61,7 @@ class MatchRankAgent:
                     "content": json.dumps({"resume": resume_text[: self.max_llm_resume_chars], "jobs": trimmed_jobs}),
                 },
             ]
-            last_raw = ollama_client.chat(messages, format="json")
+            last_raw = chat(messages, format="json")
             parsed = self._parse_llm_json(last_raw)
             if parsed is None:
                 continue
@@ -142,8 +142,8 @@ class MatchRankAgent:
         started = datetime.utcnow().isoformat()
         resume_text = self._resume_query_text(resume_id)
         try:
-            query_embedding = ollama_client.embed(resume_text[: self.max_embed_chars])
-        except ollama_client.OllamaError as exc:
+            query_embedding = embed(resume_text[: self.max_embed_chars])
+        except LLMProviderError as exc:
             logger.error("Embedding resume failed: %s", exc)
             raise
         if not query_embedding:
@@ -186,8 +186,8 @@ class MatchRankAgent:
         if use_llm_rerank and jobs:
             try:
                 llm_matches = self._llm_rerank(resume_text, jobs)
-            except ollama_client.OllamaError as exc:
-                logger.warning("LLM rerank skipped due to Ollama error: %s", exc)
+            except LLMProviderError as exc:
+                logger.warning("LLM rerank skipped due to provider error: %s", exc)
                 llm_matches = {}
             for job in jobs:
                 if job["job_id"] in llm_matches:

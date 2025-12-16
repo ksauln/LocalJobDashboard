@@ -1,12 +1,12 @@
 # Local Agentic Job Dashboard
 
-Local-first Streamlit app for managing resumes, sourcing jobs, and ranking matches with local LLMs. Everything runs on your machine using SQLite, Chroma, and [Ollama](https://ollama.com/). No LangChain required.
+Local-first Streamlit app for managing resumes, sourcing jobs, and ranking matches with either local [Ollama](https://ollama.com/) models or remote OpenAI-compatible APIs. Everything runs on your machine using SQLite and Chroma by default. No LangChain required.
 
 ## What You Get
 - Streamlit UI: pages for resumes, job search, match/rank, and settings/logs
 - Lightweight agents to ingest resumes, scout jobs from multiple sources, and rank matches (with optional LLM explanations)
 - Storage: SQLite for metadata/logs and two persistent Chroma vector DBs (jobs, resumes)
-- Local LLMs: Ollama embeddings + chat/rerank models
+- LLMs: Ollama embeddings + chat/rerank models, or OpenAI-compatible APIs (supply your key)
 - CLI scripts for the same workflows (ingest, fetch jobs, match, scrape board slugs, quick eval)
 - Tests and lint via pytest + ruff
 
@@ -14,7 +14,8 @@ Local-first Streamlit app for managing resumes, sourcing jobs, and ranking match
 - Python 3.11+
 - pip + virtualenv (or conda)
 - Make (optional; manual commands shown)
-- Ollama installed locally and running (`ollama serve`) with models `llama3.1` and `nomic-embed-text` pulled
+- LLM option 1 (local): Ollama installed and running (`ollama serve`) with models `llama3.1` and `nomic-embed-text` pulled
+- LLM option 2 (remote): OpenAI-compatible endpoint + API key (defaults target api.openai.com)
 - macOS/Linux recommended; Windows works best with WSL2
 
 ## Setup (end-to-end)
@@ -24,12 +25,14 @@ Local-first Streamlit app for managing resumes, sourcing jobs, and ranking match
 2) Create your env file  
 `cp .env.example .env` then edit values as needed (see **Configuration** below).
 
-3) Start Ollama and download models  
-```bash
-ollama serve  # keep running in a terminal
-ollama pull llama3.1
-ollama pull nomic-embed-text
-```
+3) Choose your LLM provider
+- **Local Ollama (default)**: start Ollama and pull models
+  ```bash
+  ollama serve  # keep running in a terminal
+  ollama pull llama3.1
+  ollama pull nomic-embed-text
+  ```
+- **OpenAI-compatible**: make sure `OPENAI_API_KEY` is set (or add it via the Settings page) and your endpoint is reachable.
 
 4) Create a virtualenv and install deps  
 ```bash
@@ -53,9 +56,14 @@ make run
 ## Configuration (.env)
 Copy `.env.example` to `.env` and tweak:
 
+- `LLM_PROVIDER` (default `ollama`): set to `ollama` for local, `openai` for OpenAI-compatible APIs.
 - `OLLAMA_BASE_URL` (default `http://localhost:11434`): where Ollama serves API requests.
 - `OLLAMA_MODEL` (default `llama3.1`): chat/rerank model.
 - `OLLAMA_EMBED_MODEL` (default `nomic-embed-text`): embedding model.
+- `OPENAI_BASE_URL` (default `https://api.openai.com/v1`): OpenAI-compatible base URL.
+- `OPENAI_MODEL` (default `gpt-4o-mini`): chat/rerank model when using OpenAI-compatible APIs.
+- `OPENAI_EMBED_MODEL` (default `text-embedding-3-small`): embedding model for OpenAI-compatible APIs.
+- `OPENAI_API_KEY`: API key if using OpenAI-compatible providers.
 - `SQLITE_PATH` (default `./data/app.db`): metadata + run logs.
 - `VDB_JOBS_DIR` / `VDB_RESUMES_DIR` (defaults in `./data`): Chroma persistence directories.
 - `JOB_SOURCES` (default `remotive,scraper`): comma list of sources to use. Set to `remotive` to avoid scraping.
@@ -68,7 +76,7 @@ Tip: if you need board slugs, run `python scripts/scrape_boards.py --max-urls 50
 1) **Resumes page**: upload `pdf`, `docx`, or `txt`, then click **Ingest**. The resume is chunked, embedded, and stored in SQLite + Chroma.  
 2) **Job Search page**: type a search query (e.g., "senior backend python") and set **Limit per source**. Click **Run JobScout** to fetch from sources defined in `JOB_SOURCES`; results are saved.  
 3) **Match & Rank page**: pick a previously ingested resume, choose **Top K**, and decide whether to use LLM explanations. Click **Rank** to see hybrid scores, distances, optional LLM match notes, and job links.  
-4) **Settings & Logs page**: view the current config and recent run logs. Use the danger-zone buttons to clear jobs/resumes (wipes SQLite + vectors).
+4) **Settings & Logs page**: choose LLM provider (Ollama or OpenAI-compatible), update API/base URL/model names for the current session, view config defaults, and review recent run logs. Use the danger-zone buttons to clear jobs/resumes (wipes SQLite + vectors).
 
 ## CLI equivalents (optional)
 Activate your venv first: `. .venv/bin/activate`
