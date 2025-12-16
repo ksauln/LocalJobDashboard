@@ -82,3 +82,25 @@ def test_llm_rerank_handles_non_string_chat_output(monkeypatch):
     result = agent._llm_rerank("resume text", [{"job_id": "job-a", "description": "desc"}])
 
     assert result["job-a"]["score_0_to_100"] == 88
+
+
+def test_llm_rerank_fills_missing_with_hybrid(monkeypatch):
+    agent = MatchRankAgent(None, None)
+
+    def fake_chat(_messages, model=None, format=None):
+        assert format == "json"
+        # Always omit job-miss to force fallback
+        return '[{"job_id": "job-keep", "score_0_to_100": 70, "strengths": [], "gaps": [], "short_reason": "ok"}]'
+
+    monkeypatch.setattr("src.agents.match_rank.ollama_client.chat", fake_chat)
+
+    jobs = [
+        {"job_id": "job-keep", "description": "desc1", "hybrid_score": 70},
+        {"job_id": "job-miss", "description": "desc2", "hybrid_score": 55},
+    ]
+
+    result = agent._llm_rerank("resume text", jobs)
+
+    assert result["job-keep"]["score_0_to_100"] == 70
+    assert result["job-miss"]["score_0_to_100"] == 55
+    assert "Filled from hybrid score" in result["job-miss"]["short_reason"]

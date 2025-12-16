@@ -29,8 +29,8 @@ class MatchRankAgent:
 
     def _llm_rerank(self, resume_text: str, jobs: List[dict]) -> dict:
         base_prompt = (
-            "You are a ranking function. Return only a JSON array (no code fences, no prose) with up to 10 items. "
-            "Use this shape exactly: "
+            "You are a ranking function. Return only a JSON array (no code fences, no prose) with one item PER job provided (do not drop any). "
+            "Use this shape exactly for every job: "
             '[{"job_id": "string", "score_0_to_100": 0-100 integer, "strengths": ["string"], '
             '"gaps": ["string"], "short_reason": "string"}]. If there are no matches, return [].'
         )
@@ -46,10 +46,14 @@ class MatchRankAgent:
                     **job,
                     "description": (job.get("description") or "")[: self.max_llm_job_chars],
                 }
-        )
+            )
+        job_ids = [job.get("job_id") for job in trimmed_jobs if job.get("job_id")]
+        job_lookup = {job["job_id"]: job for job in trimmed_jobs if job.get("job_id")}
+        logger.info("LLM rerank input: %s jobs sent (ids=%s)", len(trimmed_jobs), job_ids)
         parsed = None
         last_raw = ""
-        for prompt in prompts:
+        missing_ids: List[str] = []
+        for idx, prompt in enumerate(prompts):
             messages = [
                 {"role": "system", "content": prompt},
                 {
@@ -59,12 +63,47 @@ class MatchRankAgent:
             ]
             last_raw = ollama_client.chat(messages, format="json")
             parsed = self._parse_llm_json(last_raw)
-            if parsed is not None:
-                break
+            if parsed is None:
+                continue
+            returned_ids = [item.get("job_id") for item in parsed if item.get("job_id")]
+            missing_ids = [jid for jid in job_ids if jid not in returned_ids]
+            if missing_ids and idx < len(prompts) - 1:
+                logger.info(
+                    "LLM rerank missing %s/%s jobs after prompt %s; retrying",
+                    len(missing_ids),
+                    len(job_ids),
+                    idx + 1,
+                )
+                parsed = None  # trigger next prompt
+                continue
+            break
         if parsed is None:  # pragma: no cover - resiliency for non-JSON model output
             logger.warning("LLM rerank parse failed after retries: %s", last_raw)
             return {}
-        return {item["job_id"]: item for item in parsed if item.get("job_id")}
+        returned_ids = [item.get("job_id") for item in parsed if item.get("job_id")]
+        missing_ids = [jid for jid in job_ids if jid not in returned_ids]
+        unknown_ids = [jid for jid in returned_ids if jid not in job_ids]
+        logger.info("LLM rerank output: %s jobs scored (%s)", len(returned_ids), returned_ids)
+        if missing_ids:
+            logger.info("LLM rerank missing %s jobs (not returned by model): %s", len(missing_ids), missing_ids)
+        if unknown_ids:
+            logger.info("LLM rerank returned %s unknown job ids (not in prompt): %s", len(unknown_ids), unknown_ids)
+        match_map = {item["job_id"]: item for item in parsed if item.get("job_id")}
+        if missing_ids:
+            for jid in missing_ids:
+                hybrid_score_val = job_lookup.get(jid, {}).get("hybrid_score", 0) or 0
+                match_map[jid] = {
+                    "job_id": jid,
+                    "score_0_to_100": round(hybrid_score_val),
+                    "strengths": [],
+                    "gaps": [],
+                    "short_reason": "Filled from hybrid score (LLM missing)",
+                }
+            logger.info(
+                "LLM rerank filled %s missing jobs using hybrid scores",
+                len(missing_ids),
+            )
+        return match_map
 
     @staticmethod
     def _parse_llm_json(raw) -> Optional[List[dict]]:
@@ -142,6 +181,7 @@ class MatchRankAgent:
                     "distance_score": distance_score,
                 }
             )
+        logger.info("Hybrid retrieval produced %s jobs (top_k=%s)", len(jobs), top_k)
         llm_matches = {}
         if use_llm_rerank and jobs:
             try:
@@ -152,6 +192,7 @@ class MatchRankAgent:
             for job in jobs:
                 if job["job_id"] in llm_matches:
                     job["match"] = llm_matches[job["job_id"]]
+            logger.info("LLM scores applied to %s/%s jobs", len(llm_matches), len(jobs))
         jobs.sort(
             key=lambda j: j.get("match", {}).get("score_0_to_100", j.get("hybrid_score", 0)),
             reverse=True,
